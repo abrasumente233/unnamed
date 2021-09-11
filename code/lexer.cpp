@@ -201,7 +201,7 @@ void Lexer::report_error(const char *error_message) {
     printf("^");
 
     printf("\n");
-    __debugbreak();
+    debug_break();
 }
 
 char *get_object_filename(const char *input_filename) {

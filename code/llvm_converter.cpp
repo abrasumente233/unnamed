@@ -211,11 +211,9 @@ bool emit_object_file(Module *llvm_module) {
 
     auto target_triple = sys::getDefaultTargetTriple();
 
-    InitializeAllTargetInfos();
-    InitializeAllTargets();
-    InitializeAllTargetMCs();
-    InitializeAllAsmParsers();
-    InitializeAllAsmPrinters();
+    InitializeNativeTarget();
+    //InitializeNativeTargetAsmParser();
+    InitializeNativeTargetAsmPrinter();
 
     std::string error;
     auto target = TargetRegistry::lookupTarget(target_triple, error);

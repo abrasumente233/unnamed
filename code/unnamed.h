@@ -19,7 +19,11 @@ typedef int32_t i32;
 typedef int16_t i16;
 typedef int8_t  i8;
 
-bool string_match(const char *x, const char *y) {
+#define internal        static
+#define global_variable static
+#define local_persist   static
+
+internal bool string_match(const char *x, const char *y) {
     return (strcmp(x, y) == 0);
 }
 

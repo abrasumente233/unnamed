@@ -1,5 +1,5 @@
 
-char *read_entire_file(const char *filename) {
+internal char *read_entire_file(const char *filename) {
     FILE *fp = fopen(filename, "rb");
 
     if (!fp) {
@@ -28,7 +28,7 @@ char *read_entire_file(const char *filename) {
     return buffer;
 }
 
-Token make_token(u32 type, u32 l, u32 c) {
+internal Token make_token(u32 type, u32 l, u32 c) {
     Token t;
     t.l = l;
     t.c = c;
@@ -36,15 +36,15 @@ Token make_token(u32 type, u32 l, u32 c) {
     return t;
 }
 
-bool is_space(char c) {
+internal bool is_space(char c) {
     return (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\v') || (c == '\f');
 }
 
-bool starts_ident(char c) {
+internal bool starts_ident(char c) {
     return (c == '_') || (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 }
 
-bool continues_ident(char c) {
+internal bool continues_ident(char c) {
     return starts_ident(c) || (c >= '0' && c <= '9');
 }
 
@@ -204,7 +204,7 @@ void Lexer::report_error(const char *error_message) {
     debug_break();
 }
 
-char *get_object_filename(const char *input_filename) {
+internal char *get_object_filename(const char *input_filename) {
     i32 len = strlen(input_filename);
     auto obj_filename = (char *) malloc(len + 1); // @Leak
 

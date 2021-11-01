@@ -155,4 +155,4 @@ namespace IL {
 
 };
 
-void print_il_module(IL::Module *module);
+internal void print_il_module(IL::Module *module);

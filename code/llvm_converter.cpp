@@ -1,6 +1,4 @@
 
-#include "llvm_converter.h"
-
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Module.h"
@@ -33,7 +31,7 @@ using namespace llvm::sys;
 
 // perform typical -O2 optimization pipeline on a module
 // Ref: https://llvm.org/docs/NewPassManager.html#just-tell-me-how-to-run-the-default-optimization-pipeline-with-the-new-pass-manager
-void optimize_module(Module *module, u32 optimization_level) {
+internal void optimize_module(Module *module, u32 optimization_level) {
 
     // create the analysis managers
     LoopAnalysisManager     LAM;
@@ -71,7 +69,7 @@ struct LLVM_Converter {
     Array<BasicBlock *> blocks;
 };
 
-Value *get_previously_converted_value(LLVM_Converter *c, IL::Value *value_il) {
+internal Value *get_previously_converted_value(LLVM_Converter *c, IL::Value *value_il) {
 
     assert(value_il);
 
@@ -84,7 +82,7 @@ Value *get_previously_converted_value(LLVM_Converter *c, IL::Value *value_il) {
 
 }
 
-llvm::Type *convert_type(LLVM_Converter *c, AST::Type *type) {
+internal llvm::Type *convert_type(LLVM_Converter *c, AST::Type *type) {
     if (type->type == AST::Type::VOID) {
         return llvm::Type::getVoidTy(*c->ctx);
     } else if (type->type == AST::Type::INTEGER) {
@@ -96,7 +94,7 @@ llvm::Type *convert_type(LLVM_Converter *c, AST::Type *type) {
     }
 }
 
-void convert_value(LLVM_Converter *c, Function *function, IL::Value *value_il) {
+internal void convert_value(LLVM_Converter *c, Function *function, IL::Value *value_il) {
 
     // assert(value_il->llvm_value == nullptr);
 
@@ -189,7 +187,7 @@ void convert_value(LLVM_Converter *c, Function *function, IL::Value *value_il) {
 
 }
 
-Function *convert_function(LLVM_Converter *c, IL::Function *func_il) {
+internal Function *convert_function(LLVM_Converter *c, IL::Function *func_il) {
     auto arg_count = func_il->ast->func_type->arguments.size();
     //Array<llvm::Type *> arg_type(arg_count, llvm::Type::getInt32Ty(*c->ctx));
     Array<llvm::Type *> arg_type;
@@ -231,7 +229,7 @@ Function *convert_function(LLVM_Converter *c, IL::Function *func_il) {
     return f;
 }
 
-Module *convert_module(IL::Module *module_il) {
+internal Module *convert_module(IL::Module *module_il) {
 
     // create a new context and module
     LLVM_Converter converter;
@@ -258,7 +256,7 @@ Module *convert_module(IL::Module *module_il) {
 }
 
 // Returns true if succueed
-bool emit_object_file(Module *llvm_module) {
+internal bool emit_object_file(Module *llvm_module) {
 
     auto target_triple = sys::getDefaultTargetTriple();
 

@@ -112,4 +112,4 @@ inline bool is_keyword(Token t) {
     return (t.type >= Token::KEYWORD_START && t.type < Token::KEYWORD_END);
 }
 
-char *get_object_filename(const char *input_filename);
+internal char *get_object_filename(const char *input_filename);

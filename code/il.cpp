@@ -114,7 +114,7 @@ namespace IL {
         AST::Scope *scope;
     };
 
-    Value *convert_expression(Convert_Context *ctx, AST::Expreesion *expr, bool is_lvalue = false) {
+    internal Value *convert_expression(Convert_Context *ctx, AST::Expreesion *expr, bool is_lvalue = false) {
         switch (expr->type) {
 
             case AST::INT_LITERAL: {
@@ -189,7 +189,7 @@ namespace IL {
         }
     }
 
-    void convert_block(Convert_Context *ctx, AST::Block *block_ast) {
+    internal void convert_block(Convert_Context *ctx, AST::Block *block_ast) {
 
         auto old_scope = ctx->scope;
         ctx->scope = block_ast->scope;
@@ -292,7 +292,7 @@ namespace IL {
 
     }
 
-    Function *convert_function(Convert_Context *ctx, AST::Function *func_ast) {
+    internal Function *convert_function(Convert_Context *ctx, AST::Function *func_ast) {
 
         auto f = new Function;
         f->ast = func_ast;
@@ -310,7 +310,7 @@ namespace IL {
 
     }
     
-    Module *convert_module(AST::Module *module_ast) {
+    internal Module *convert_module(AST::Module *module_ast) {
         auto m = new Module;
 
         Convert_Context ctx;
@@ -334,7 +334,7 @@ inline void print_value(IL::Value *v) {
     printf("$%u", v->n);
 }
 
-void print_il_module(IL::Module *module) {
+internal void print_il_module(IL::Module *module) {
     using namespace IL;
 
     for (u32 func_index = 0;

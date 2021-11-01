@@ -19,5 +19,10 @@ typedef int32_t i32;
 typedef int16_t i16;
 typedef int8_t  i8;
 
+bool string_match(const char *x, const char *y) {
+    return (strcmp(x, y) == 0);
+}
+
 #include "lexer.h"
 #include "parser.h"
+// #include "bytecode.h"

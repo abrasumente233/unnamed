@@ -1,11 +1,12 @@
 
-#include "compiler.h"
 #include "unnamed.h"
+#include "compiler.h"
 
 #include "lexer.cpp"
 #include "parser.cpp"
 #include "il.cpp"
 #include "llvm_converter.cpp"
+// #include "bytecode.cpp"
 
 int main(i32 argc, char **argv) {
 
@@ -13,11 +14,19 @@ int main(i32 argc, char **argv) {
         char *option = argv[i];
 
         if (option[0] == '-') {
-            if (strcmp(option, "-o") == 0) {
+            if (string_match(option, "-o")) {
                 i += 1;
                 assert(i < argc);
                 options.output_filename = argv[i];
                 continue;
+            } else if (string_match(option, "-O0")) {
+                options.optimization_level = 0;
+            } else if (string_match(option, "-O1")) {
+                options.optimization_level = 1;
+            } else if (string_match(option, "-O2")) {
+                options.optimization_level = 2;
+            } else if (string_match(option, "-O3")) {
+                options.optimization_level = 3;
             } else {
                 printf("Usage: %s <filename>\n", argv[0]);
                 return 1;

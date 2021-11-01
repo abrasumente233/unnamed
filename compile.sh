@@ -3,7 +3,7 @@
 set -eu
 
 CXX=${CXX:-clang++}
-LLVM_Flags=`llvm-config --cxxflags --ldflags --system-libs --libs core native`
+LLVM_Flags=`llvm-config --cxxflags --ldflags --system-libs --libs core native passes`
 
 mkdir -p build
 

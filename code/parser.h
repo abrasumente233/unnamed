@@ -21,9 +21,13 @@ namespace AST {
     };
 
     struct Integer_Type : Type {
+        u8 is_unsigned;
         u8 size; // size in bytes
 
-        Integer_Type(u8 size) : size(size) { type = INTEGER; }
+        Integer_Type(u8 size, bool is_unsigned = false)
+            : size(size), is_unsigned(is_unsigned) {
+            type = INTEGER;
+        }
     };
 
     struct Function_Type : Type {

@@ -10,6 +10,13 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Verifier.h"
 
+#include "llvm/Analysis/LoopAnalysisManager.h"
+#include "llvm/Analysis/CGSCCPassManager.h"
+#include "llvm/Analysis/AliasAnalysis.h"
+
+#include "llvm/Passes/OptimizationLevel.h"
+#include "llvm/Passes/PassBuilder.h"
+
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Host.h"
 #include "llvm/Support/raw_ostream.h"
@@ -23,6 +30,39 @@ namespace llvm_conv {
 
 using namespace llvm;
 using namespace llvm::sys;
+
+// perform typical -O2 optimization pipeline on a module
+// Ref: https://llvm.org/docs/NewPassManager.html#just-tell-me-how-to-run-the-default-optimization-pipeline-with-the-new-pass-manager
+void optimize_module(Module *module, u32 optimization_level) {
+
+    // create the analysis managers
+    LoopAnalysisManager     LAM;
+    FunctionAnalysisManager FAM;
+    CGSCCAnalysisManager    CGAM;
+    ModuleAnalysisManager   MAM;
+
+    PassBuilder PB;
+
+    FAM.registerPass([&] { return PB.buildDefaultAAPipeline(); });
+
+    PB.registerModuleAnalyses(MAM);
+    PB.registerCGSCCAnalyses(CGAM);
+    PB.registerFunctionAnalyses(FAM);
+    PB.registerLoopAnalyses(LAM);
+    PB.crossRegisterProxies(LAM, FAM, CGAM, MAM);
+
+    OptimizationLevel llvm_optimization_level;
+    switch (optimization_level) {
+        case 1: llvm_optimization_level = OptimizationLevel::O1; break;
+        case 2: llvm_optimization_level = OptimizationLevel::O2; break;
+        case 3: llvm_optimization_level = OptimizationLevel::O3; break;
+        default: assert(false && "unknown optimization level");
+    }
+    ModulePassManager MPM =
+        PB.buildPerModuleDefaultPipeline(llvm_optimization_level);
+
+    MPM.run(*module, MAM);
+}
 
 struct LLVM_Converter {
     LLVMContext *ctx;
@@ -48,9 +88,10 @@ llvm::Type *convert_type(LLVM_Converter *c, AST::Type *type) {
     if (type->type == AST::Type::VOID) {
         return llvm::Type::getVoidTy(*c->ctx);
     } else if (type->type == AST::Type::INTEGER) {
-        return llvm::Type::getInt32Ty(*c->ctx);
+        auto int_type = (AST::Integer_Type *) type;
+        return llvm::IntegerType::get(*c->ctx, int_type->size * 8);
     } else {
-        assert(false && "convering unknown type to LLVM IR");
+        assert(false && "converting unknown type to LLVM IR");
         return nullptr;
     }
 }
@@ -150,18 +191,23 @@ void convert_value(LLVM_Converter *c, Function *function, IL::Value *value_il) {
 
 Function *convert_function(LLVM_Converter *c, IL::Function *func_il) {
     auto arg_count = func_il->ast->func_type->arguments.size();
-    Array<llvm::Type *> arg_type(arg_count, llvm::Type::getInt32Ty(*c->ctx));
+    //Array<llvm::Type *> arg_type(arg_count, llvm::Type::getInt32Ty(*c->ctx));
+    Array<llvm::Type *> arg_type;
+    for (auto arg : func_il->ast->func_type->arguments) {
+        arg_type.push_back(convert_type(c, arg));
+    }
     FunctionType *ft = FunctionType::get(
         convert_type(c, func_il->ast->func_type->return_type), arg_type, false);
 
-    Function *f = Function::Create(ft, Function::ExternalLinkage, func_il->ast->name, c->module);
+    Function *f = Function::Create(ft, Function::ExternalLinkage,
+                                   func_il->ast->name, c->module);
 
     if (func_il->ast->body == nullptr) {
         return f;
     }
 
     c->blocks.clear();
-    for (auto bb_il : func_il->blocks) {
+    for (u32 i = 0; i < func_il->blocks.size(); i++) {
         auto bb = BasicBlock::Create(*c->ctx, "", f);
         c->blocks.push_back(bb);
     }
@@ -198,6 +244,11 @@ Module *convert_module(IL::Module *module_il) {
     // convert functions
     for (auto function_il : module_il->functions) {
         convert_function(&converter, function_il);
+    }
+
+    // @FIXME: DONT DEPEND ON GLOBAL VARIABLE
+    if (options.optimization_level != 0) {
+        optimize_module(converter.module, options.optimization_level);
     }
 
     printf("\n\n");
@@ -238,6 +289,7 @@ bool emit_object_file(Module *llvm_module) {
     llvm_module->setDataLayout(target_machine->createDataLayout());
     llvm_module->setTargetTriple(target_triple);
 
+    // @FIXME: DONT DEPEND ON GLOBAL VARIABLE
     const char *obj_filename;
     if (options.output_filename) {
         obj_filename = options.output_filename;

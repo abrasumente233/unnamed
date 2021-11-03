@@ -16,6 +16,18 @@ inline void normal_text() {
     printf(_TEXT_NORMAL);
 }
 
+#define KEYWORDS(F)                                                            \
+    F(KEYWORD_WHILE = KEYWORD_START, "while")                                  \
+    F(KEYWORD_FUNC, "func")                                                    \
+    F(KEYWORD_I8, "i8")                                                        \
+    F(KEYWORD_I16, "i16")                                                      \
+    F(KEYWORD_I32, "i32")                                                      \
+    F(KEYWORD_I64, "i64")                                                      \
+    F(KEYWORD_VOID, "void")                                                    \
+    F(KEYWORD_RETURN, "return")                                                \
+    F(KEYWORD_CAST, "cast")                                                    \
+    F(DIRECTIVE_C_FUNCTION, "@c_function")
+
 struct Token {
     enum Token_Type {
         END = 0,
@@ -25,21 +37,10 @@ struct Token {
         STRING,
 
         KEYWORD_START = 500,
-
-        KEYWORD_WHILE = KEYWORD_START,
-        KEYWORD_FUNC,
-        KEYWORD_I8,
-        KEYWORD_I16,
-        KEYWORD_I32,
-        KEYWORD_I64,
-        KEYWORD_VOID,
-        KEYWORD_RETURN,
-
-        DIRECTIVE_START,
-        DIRECTIVE_C_FUNCTION = DIRECTIVE_START,
-        DIRECTIVE_END,
-
-        KEYWORD_END = DIRECTIVE_END,
+#define EXPAND_KEYWORD_TOKEN(token, _) token,
+        KEYWORDS(EXPAND_KEYWORD_TOKEN)
+#undef EXPAND_KEYWORD_TOKEN
+        KEYWORD_END,
 
         ARROW, // ->
     };
@@ -66,16 +67,9 @@ struct Token {
 };
 
 const char *keywords[] = {
-    "while",
-    "func",
-    "i8",
-    "i16",
-    "i32",
-    "i64",
-    "void",
-    "return",
-
-    "@c_function",
+#define EXPAND_KEYWORD_STRING(_, string) string,
+        KEYWORDS(EXPAND_KEYWORD_STRING)
+#undef EXPAND_KEYWORD_STRING
 };
 
 struct Lexer {
@@ -103,10 +97,6 @@ struct Lexer {
     void expect_and_eat(u32 type);
 
 };
-
-inline bool is_directive(Token t) {
-    return (t.type >= Token::DIRECTIVE_START && t.type < Token::DIRECTIVE_END);
-}
 
 inline bool is_keyword(Token t) {
     return (t.type >= Token::KEYWORD_START && t.type < Token::KEYWORD_END);

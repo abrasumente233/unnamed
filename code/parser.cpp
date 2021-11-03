@@ -246,7 +246,7 @@ struct Parser {
 
         auto func = new Function;
 
-        if (is_directive(lexer->token())) {
+        if (is_keyword(lexer->token())) {
             while (true) {
                 Token t = lexer->token();
                 if (t.type == Token::DIRECTIVE_C_FUNCTION) {

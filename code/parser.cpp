@@ -20,29 +20,8 @@ struct Parser {
         }
     }
 
-    Expreesion *parse_unary() {
-        
-        u32 op = lexer->token().type;
-        u32 prec;
-        bool is_unary_op = true;
-
-        // @TODO: cleanup the prec
-        switch(op) {
-            case '+': prec = 15; break;
-            case '-': prec = 15; break;
-            default: is_unary_op = false;
-        }
-
-        if (is_unary_op) {
-            lexer->eat();
-
-            auto un = new Unary;
-            un->op      = op;
-            un->operand = parse_expression(prec);
-            assert(un->operand);
-
-            return un;
-        } else if (lexer->token().type == Token::IDENTIFIER && 
+    Expreesion *parse_primary_expression() {
+        if (lexer->token().type == Token::IDENTIFIER && 
                    lexer->peek().type == '(') {
             auto call = parse_function_call();
 
@@ -69,7 +48,62 @@ struct Parser {
 
             return expr;
         } else {
+            // @TODO: nullptr?
             return nullptr;
+        }
+    }
+
+    Expreesion *parse_unary() {
+        
+        u32 op = lexer->token().type;
+        u32 prec;
+        bool is_unary_op = true;
+
+        // @TODO: cleanup the prec
+        switch(op) {
+            case '+': prec = 15; break;
+            case '-': prec = 15; break;
+            default: is_unary_op = false;
+        }
+
+        if (is_unary_op) {
+            lexer->eat();
+
+            auto un = new Unary;
+            un->op      = op;
+            un->operand = parse_expression(prec);
+            assert(un->operand);
+
+            return un;
+        } else {
+            auto primary_expr = parse_primary_expression();
+
+            // is array reference?
+            if (lexer->token().type == '[') {
+                if (primary_expr->type == INT_LITERAL) {
+                    lexer->report_error("cannot dereference integer literal");
+                }
+
+                auto ref = new Array_Reference;
+
+                ref->base = primary_expr;
+
+                while (true) {
+                    if (lexer->token().type != '[') break;
+                    lexer->eat();
+                    
+                    auto index = parse_expression();
+                    assert(index);
+                    ref->indices.push_back(index);
+
+                    lexer->expect_and_eat(']');
+                }
+
+                return ref;
+
+            } else {
+                return primary_expr;
+            }
         }
     }
 

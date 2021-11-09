@@ -12,7 +12,8 @@ namespace AST {
         enum _Type : u32 {
             VOID,
             INTEGER,
-            FUNCTION
+            FUNCTION,
+            ARRAY
         } type;
     };
 
@@ -33,6 +34,13 @@ namespace AST {
         Type *return_type;
     };
 
+    struct Array_Type : Type {
+        Array_Type() { type = ARRAY; }
+
+        Type       *data_type;
+        Array<u32> dimensions;
+    };
+
     enum {
         INT_LITERAL,
         IDENTIFIER,
@@ -42,6 +50,7 @@ namespace AST {
         VARIABLE,
         FUNCTION,
         ASSIGN,
+        ARRAY_REFERENCE,
         WHILE,
         RETURN,
         BLOCK,
@@ -87,6 +96,13 @@ namespace AST {
 
         char *name;
         Array<Expreesion *> arguments;
+    };
+
+    struct Array_Reference : Expreesion {
+        Array_Reference() { type = ARRAY_REFERENCE; }
+
+        Expreesion *base;
+        Array<Expreesion *> indices;
     };
 
     struct Variable : Node {

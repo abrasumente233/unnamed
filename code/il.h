@@ -18,6 +18,7 @@ namespace IL {
             FUNCTION_CALL,
             LOAD,
             STORE,
+            GEP,
             BRANCH,
             JUMP,
             RETURN
@@ -99,6 +100,15 @@ namespace IL {
         Value *source;
     };
 
+    struct Get_Element_Pointer : Value {
+        static const Value::_Type TYPE = Value::GEP;
+        Get_Element_Pointer() { type = Value::GEP }
+
+        AST::Type type;
+        Value *base;
+        Array<u32> indices;
+    }
+
     struct Branch : Value {
         static const Value::_Type TYPE = Value::BRANCH;
         Branch() { type = Value::BRANCH; }
@@ -143,6 +153,7 @@ namespace IL {
         Function_Call *insert_call(Basic_Block *bb, char *name, Array<Value *> *arguments);
         Load *insert_load(Basic_Block *bb, Value *base, Value *offset = nullptr);
         Store *insert_store(Basic_Block *bb, Value *source, Value *base, Value *offset = nullptr);
+        Get_Element_Pointer *insert_gep(Basic_Block *bb, AST::Type type, Value *base, Array<u32> indices);
         Branch *insert_branch(Basic_Block *bb, Value *condition, Basic_Block *true_target, Basic_Block *false_target);
         Jump *insert_jump(Basic_Block *bb, Basic_Block *target);
         Return *insert_return(Basic_Block *bb, Value *return_value = nullptr);

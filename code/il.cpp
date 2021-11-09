@@ -79,6 +79,17 @@ namespace IL {
         return store;
     }
 
+    // @TODO: avoid the copy of array!
+    Get_Element_Pointer *insert_gep(Basic_Block *bb, AST::Type type, Value *base, Array<u32> indices) {
+        auto gep = new Get_Element_Pointer;
+        gep->type    = type;
+        gep->base    = base;
+        gep->indices = indices;
+        bb->instructions.push_back(gep);
+
+        return gep;
+    }
+
     Branch *Function::insert_branch(Basic_Block *bb, Value *condition, Basic_Block *true_target, Basic_Block *false_target) {
         auto br          = new Branch;
         br->n            = value_count++;
@@ -138,6 +149,27 @@ namespace IL {
                 }
             }
 
+            case AST::ARRAY_REFERENCE: {
+                auto ref = (AST::Array_Reference *) stmt;
+
+                Array<Value *> indices;
+
+                assert(ref->base->type == AST)
+                auto var = find_variable(ctx->scope, id->name);
+
+                auto base = convert_expression(ctx, ref->base);
+
+                for (auto index_expr : ref->indices) {
+                    auto index = convert_expression(ctx, index_expr);
+                    indices.push_back(index);
+                }
+
+                auto gep = ctx->f->insert_gep(ctx->bb, TYPE, base, indices);
+
+                return insert_load(ctx->bb, gep);
+
+            } break;
+
             case AST::BINARY: {
                 auto bi = (AST::Binary *) expr;
 
@@ -195,7 +227,7 @@ namespace IL {
         ctx->scope = block_ast->scope;
 
         // @curious
-        // How does this way of dynamic dispatching affters I$?
+        // How does this way of dynamic dispatching affects I$?
         // How can we profile it?
         for (auto stmt : block_ast->statements) {
 
@@ -203,6 +235,7 @@ namespace IL {
 
                 case AST::INT_LITERAL:
                 case AST::IDENTIFIER:
+                case AST::ARRAY_REFERENCE:
                 case AST::BINARY:
                 case AST::UNARY:
                 case AST::FUNCTION_CALL:
@@ -405,6 +438,14 @@ void print_il_module(IL::Module *module) {
                     print_value(store->source);
                     printf(" -> ");
                     print_value(store->base);
+                } else if (auto gep = I->as<Get_Element_Pointer>()) {
+                    printf("gep\t");
+                    print_value(gep->base);
+
+                    for (u32 index : gep->indices) {
+                        printf(", %u", index);
+                    }
+
                 } else if (auto br = I->as<Branch>()) {
                     printf("br \t");
                     print_value(br->condition);

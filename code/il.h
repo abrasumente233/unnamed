@@ -9,19 +9,22 @@ namespace IL {
      * Do we really need a numbering for each Value?
      */
     struct Value {
-        enum _Type {
+        enum _Tag {
             UNDEF,
             CONSTANT,
             ALLOCA,
             BINARY_EXPRESSION,
             UNARY_EXPRESSION,
+            INT_ZERO_EXTEND,
+            INT_SIGN_EXTEND,
+            INT_TRUNCATE,
             FUNCTION_CALL,
             LOAD,
             STORE,
             BRANCH,
             JUMP,
             RETURN
-        } type;
+        } tag;
 
         u32 n;
 
@@ -33,7 +36,7 @@ namespace IL {
 
         template<typename VT>
         VT *as() {
-            return (type == VT::TYPE) ? static_cast<VT *>(this) : nullptr;
+            return (tag == VT::TAG) ? static_cast<VT *>(this) : nullptr;
         }
     };
 
@@ -43,22 +46,22 @@ namespace IL {
     };
 
     struct Constant : Value {
-        static const Value::_Type TYPE = Value::CONSTANT;
-        Constant() { type = Value::CONSTANT; }
+        static const Value::_Tag TAG = Value::CONSTANT;
+        Constant() { tag = Value::CONSTANT; }
 
         u64 value;
     };
 
     struct Alloca : Value {
-        static const Value::_Type TYPE = Value::ALLOCA;
-        Alloca() { type = Value::ALLOCA; }
+        static const Value::_Tag TAG = Value::ALLOCA;
+        Alloca() { tag = Value::ALLOCA; }
         
         u32 size;
     };
 
     struct Binary_Expression : Value {
-        static const Value::_Type TYPE = Value::BINARY_EXPRESSION;
-        Binary_Expression() { type = Value::BINARY_EXPRESSION; }
+        static const Value::_Tag TAG = Value::BINARY_EXPRESSION;
+        Binary_Expression() { tag = Value::BINARY_EXPRESSION; }
 
         u32 op;
 
@@ -66,33 +69,40 @@ namespace IL {
     };
 
     struct Unary_Expression : Value {
-        static const Value::_Type TYPE = Value::UNARY_EXPRESSION;
-        Unary_Expression() { type = Value::UNARY_EXPRESSION; }
+        static const Value::_Tag TAG = Value::UNARY_EXPRESSION;
+        Unary_Expression() { tag = Value::UNARY_EXPRESSION; }
 
         u32 op;
 
         Value *operand;
     };
 
+    struct Int_Zero_Extend : Value {
+        static const Value::_Tag TAG = Value::INT_ZERO_EXTEND;
+        Int_Zero_Extend() { tag = Value::INT_ZERO_EXTEND; }
+
+        Value *operand;
+    };
+
     struct Function_Call : Value {
-        static const Value::_Type TYPE = Value::FUNCTION_CALL;
-        Function_Call() { type = Value::FUNCTION_CALL; }
+        static const Value::_Tag TAG = Value::FUNCTION_CALL;
+        Function_Call() { tag = Value::FUNCTION_CALL; }
 
         char *name;
         Array<Value *> arguments;
     };
 
     struct Load : Value {
-        static const Value::_Type TYPE = Value::LOAD;
-        Load() { type = Value::LOAD; }
+        static const Value::_Tag TAG = Value::LOAD;
+        Load() { tag = Value::LOAD; }
 
         Value *base;
         Value *offset; // in bytes
     };
 
     struct Store : Value {
-        static const Value::_Type TYPE = Value::STORE;
-        Store() { type = Value::STORE; }
+        static const Value::_Tag TAG = Value::STORE;
+        Store() { tag = Value::STORE; }
 
         Value *base;
         Value *offset; // in bytes
@@ -100,8 +110,8 @@ namespace IL {
     };
 
     struct Branch : Value {
-        static const Value::_Type TYPE = Value::BRANCH;
-        Branch() { type = Value::BRANCH; }
+        static const Value::_Tag TAG = Value::BRANCH;
+        Branch() { tag = Value::BRANCH; }
 
         Value *condition;
         Basic_Block *true_target,
@@ -109,15 +119,15 @@ namespace IL {
     };
 
     struct Jump : Value {
-        static const Value::_Type TYPE = Value::JUMP;
-        Jump() { type = Value::JUMP; }
+        static const Value::_Tag TAG = Value::JUMP;
+        Jump() { tag = Value::JUMP; }
 
         Basic_Block *target;
     };
 
     struct Return : Value {
-        static const Value::_Type TYPE = Value::RETURN;
-        Return() { type = Value::RETURN; }
+        static const Value::_Tag TAG = Value::RETURN;
+        Return() { tag = Value::RETURN; }
 
         Value *return_value;
     };

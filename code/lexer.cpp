@@ -184,7 +184,7 @@ void Lexer::report_error(const char *error_message) {
     u32 error_l = token().l;
     u32 error_c = token().c;
 
-    printf("first.un:%u ", error_l);
+    printf("first.un(%u) ", error_l);
     red_text();
     printf("error: %s\n\n", error_message);
     normal_text();
@@ -201,7 +201,8 @@ void Lexer::report_error(const char *error_message) {
     printf("^");
 
     printf("\n");
-    debug_break();
+    //debug_break();
+    exit(1);
 }
 
 internal char *get_object_filename(const char *input_filename) {

@@ -42,6 +42,7 @@ namespace AST {
         IDENTIFIER,
         BINARY,
         UNARY,
+        CAST,
         FUNCTION_CALL,
         VARIABLE,
         FUNCTION,
@@ -56,7 +57,9 @@ namespace AST {
         u32 type;
     };
 
-    struct Expreesion : Node {};
+    struct Expreesion : Node {
+        Type *inferred_type;
+    };
 
     struct Int_Literal : Expreesion {
         Int_Literal() { type = INT_LITERAL; }
@@ -74,7 +77,6 @@ namespace AST {
         Binary() { type = BINARY; }
 
         u32 op;
-
         Expreesion *lhs, *rhs;
     };
 
@@ -82,8 +84,15 @@ namespace AST {
         Unary() { type = UNARY; }
 
         u32 op;
-
         Expreesion *operand;
+    };
+
+    struct Cast : Expreesion {
+        Cast() { type = CAST; }
+
+        // @Naming
+        Type *to_type;
+        Expreesion *expr;
     };
 
     struct Function_Call : Expreesion {

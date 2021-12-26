@@ -13,11 +13,17 @@
 * Ensure inline
 * Carefully defined undefined behaviour
 * Easy to use standard library
+* Match statement
 
 ## Library
 
 * Should be able to use external C/C++ library
 * Should be able to use this language to write a library
+
+## Test
+
+* Functional test
+* Run-time assert
 
 ## Static analysis
 

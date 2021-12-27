@@ -2,6 +2,9 @@
 
 namespace IL {
 
+    // @CLEANUP: All these insert helpers seem useless...
+    // Can we write a general purpose IL::value allocator instead?
+    //
     // @FIXME: do we really need to insert constants into basic blocks?
     Constant *Function::insert_constant(Basic_Block *bb, u64 value) {
         auto c = new Constant;

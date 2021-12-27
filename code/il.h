@@ -5,11 +5,51 @@ namespace llvm {
 
 namespace IL {
 
+    // We have a strongly typed IR.
+    // @TODO: Add helpers to uniquely create types, so
+    // that comparing whether two types are the same
+    // is basically a pointer comparison.
+    struct Type {
+        enum Tag {
+            NONE,
+            INTEGER,
+            FUNCTION
+        } tag;
+
+        template<typename VT>
+        VT *as() {
+            return (tag == VT::TAG) ? static_cast<VT *>(this) : nullptr;
+        }
+    };
+
+    // Some values don't have a type, like store instructions.
+    struct None_Type : Type {
+        static const Type::Tag TAG = Type::NONE;
+    };
+
+    struct Integer_Type : Type {
+        static const Type::Tag TAG = Type::INTEGER;
+        u8 is_unsigned;
+        u8 size;
+
+        Integer_Type(u8 size, bool is_unsigned = false)
+            : size(size), is_unsigned(is_unsigned) {
+            tag = INTEGER;
+        }
+    };
+
+    struct Function_Type : Type {
+        Function_Type() { tag = FUNCTION; }
+
+        Array<Type *> arguments;
+        Type *return_type;
+    };
+
     /* @TODO
      * Do we really need a numbering for each Value?
      */
     struct Value {
-        enum _Tag {
+        enum Tag {
             UNDEF,
             CONSTANT,
             ALLOCA,
@@ -46,21 +86,21 @@ namespace IL {
     };
 
     struct Constant : Value {
-        static const Value::_Tag TAG = Value::CONSTANT;
+        static const Value::Tag TAG = Value::CONSTANT;
         Constant() { tag = Value::CONSTANT; }
 
         u64 value;
     };
 
     struct Alloca : Value {
-        static const Value::_Tag TAG = Value::ALLOCA;
+        static const Value::Tag TAG = Value::ALLOCA;
         Alloca() { tag = Value::ALLOCA; }
         
         u32 size;
     };
 
     struct Binary_Expression : Value {
-        static const Value::_Tag TAG = Value::BINARY_EXPRESSION;
+        static const Value::Tag TAG = Value::BINARY_EXPRESSION;
         Binary_Expression() { tag = Value::BINARY_EXPRESSION; }
 
         u32 op;
@@ -69,7 +109,7 @@ namespace IL {
     };
 
     struct Unary_Expression : Value {
-        static const Value::_Tag TAG = Value::UNARY_EXPRESSION;
+        static const Value::Tag TAG = Value::UNARY_EXPRESSION;
         Unary_Expression() { tag = Value::UNARY_EXPRESSION; }
 
         u32 op;
@@ -78,14 +118,14 @@ namespace IL {
     };
 
     struct Int_Zero_Extend : Value {
-        static const Value::_Tag TAG = Value::INT_ZERO_EXTEND;
+        static const Value::Tag TAG = Value::INT_ZERO_EXTEND;
         Int_Zero_Extend() { tag = Value::INT_ZERO_EXTEND; }
 
         Value *operand;
     };
 
     struct Function_Call : Value {
-        static const Value::_Tag TAG = Value::FUNCTION_CALL;
+        static const Value::Tag TAG = Value::FUNCTION_CALL;
         Function_Call() { tag = Value::FUNCTION_CALL; }
 
         char *name;
@@ -93,7 +133,7 @@ namespace IL {
     };
 
     struct Load : Value {
-        static const Value::_Tag TAG = Value::LOAD;
+        static const Value::Tag TAG = Value::LOAD;
         Load() { tag = Value::LOAD; }
 
         Value *base;
@@ -101,7 +141,7 @@ namespace IL {
     };
 
     struct Store : Value {
-        static const Value::_Tag TAG = Value::STORE;
+        static const Value::Tag TAG = Value::STORE;
         Store() { tag = Value::STORE; }
 
         Value *base;
@@ -110,7 +150,7 @@ namespace IL {
     };
 
     struct Branch : Value {
-        static const Value::_Tag TAG = Value::BRANCH;
+        static const Value::Tag TAG = Value::BRANCH;
         Branch() { tag = Value::BRANCH; }
 
         Value *condition;
@@ -119,14 +159,14 @@ namespace IL {
     };
 
     struct Jump : Value {
-        static const Value::_Tag TAG = Value::JUMP;
+        static const Value::Tag TAG = Value::JUMP;
         Jump() { tag = Value::JUMP; }
 
         Basic_Block *target;
     };
 
     struct Return : Value {
-        static const Value::_Tag TAG = Value::RETURN;
+        static const Value::Tag TAG = Value::RETURN;
         Return() { tag = Value::RETURN; }
 
         Value *return_value;

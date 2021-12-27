@@ -71,9 +71,9 @@ struct Parser {
         } else if (lexer->token().type == Token::KEYWORD_CAST) {
             lexer->eat();
             auto cast = new Cast;
-            lexer->expect_and_eat('(');
+            lexer->expect_and_eat('<');
             cast->to_type = parse_type();
-            lexer->expect_and_eat(')');
+            lexer->expect_and_eat('>');
             cast->expr = parse_unary();
             
             return cast;

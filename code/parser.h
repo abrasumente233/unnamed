@@ -57,6 +57,7 @@ namespace AST {
         u32 type;
     };
 
+    // @TODO: Fix typo
     struct Expreesion : Node {
         Type *inferred_type;
     };
@@ -109,8 +110,10 @@ namespace AST {
         char *name;
         Expreesion *initial_value;
 
-        // for IL conversion
-        IL::Value *address = nullptr;
+        // Stack address for variable?
+        // for IL and LLVM conversion
+        // What about globals?
+        void *address = nullptr;
     };
 
     struct Assign : Node {

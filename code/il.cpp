@@ -134,10 +134,12 @@ namespace IL {
                 auto var = find_variable(ctx->scope, id->name);
                 assert(var->address);
 
+                auto address = (Value *)var->address;
+
                 if (is_lvalue) {
-                    return var->address;
+                    return address;
                 } else {
-                    return ctx->f->insert_load(ctx->bb, var->address);
+                    return ctx->f->insert_load(ctx->bb, address);
                 }
             }
 

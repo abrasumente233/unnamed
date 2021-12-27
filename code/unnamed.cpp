@@ -54,11 +54,11 @@ int main(i32 argc, char **argv) {
     AST::Parser parser;    
     auto module_ast = parser.parse_module(&lexer);
 
-    auto module_il = IL::convert_module(module_ast);
+    //auto module_il = IL::convert_module(module_ast);
 
-    print_il_module(module_il);
+    //print_il_module(module_il);
 
-    auto llvm_module = llvm_conv::convert_module(module_il);
+    auto llvm_module = llvm_conv::convert_module(module_ast);
 
     llvm_conv::emit_object_file(llvm_module);
 

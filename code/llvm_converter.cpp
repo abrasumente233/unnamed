@@ -65,22 +65,11 @@ internal void optimize_module(Module *module, u32 optimization_level) {
 struct LLVM_Converter {
     LLVMContext *ctx;
     Module      *module;
+    Function    *function;
     IRBuilder<> *builder;
+    AST::Scope  *scope;
     Array<BasicBlock *> blocks;
 };
-
-internal Value *get_previously_converted_value(LLVM_Converter *c, IL::Value *value_il) {
-
-    assert(value_il);
-
-    if (auto constant = value_il->as<IL::Constant>()) {
-        return ConstantInt::get(*c->ctx, 
-                APInt(32, constant->value, /* is signed */ true));
-    }
-
-    return value_il->llvm_value;
-
-}
 
 internal llvm::Type *convert_type(LLVM_Converter *c, AST::Type *type) {
     if (type->type == AST::Type::VOID) {
@@ -94,154 +83,252 @@ internal llvm::Type *convert_type(LLVM_Converter *c, AST::Type *type) {
     }
 }
 
-internal void convert_value(LLVM_Converter *c, Function *function, IL::Value *value_il) {
+internal llvm::Value *convert_expression(LLVM_Converter *c,
+                                         AST::Expreesion *expr,
+                                         bool is_lvalue = false) {
 
-    // assert(value_il->llvm_value == nullptr);
+    switch (expr->type) {
 
-    if (auto constant = value_il->as<IL::Constant>()) {
-
-    } else if (auto alloca = value_il->as<IL::Alloca>()) {
-
-        alloca->llvm_value = c->builder->CreateAlloca(
-                   llvm::Type::getInt32Ty(*c->ctx),
-                   ConstantInt::get(*c->ctx, APInt(32, (u64)alloca->size, false)));
-
-    } else if (auto bi = value_il->as<IL::Binary_Expression>()) {
-
-        Value *binary_value;
-        auto lhs = get_previously_converted_value(c, bi->lhs);
-        auto rhs = get_previously_converted_value(c, bi->rhs);
-
-        switch (bi->op) {
-            case '+': binary_value = c->builder->CreateAdd(lhs, rhs); break;
-            case '-': binary_value = c->builder->CreateSub(lhs, rhs); break;
-            case '*': binary_value = c->builder->CreateMul(lhs, rhs); break;
-            //case '/': binary_value = c->builder->CreateAdd(lhs, rhs); break;
-            case '<': binary_value = c->builder->CreateICmpSLT(lhs, rhs); break;
-            default: assert(false && "converting unknown binary instruction to LLVM IR");
+        case AST::INT_LITERAL: {
+            auto lit = (AST::Int_Literal *) expr;
+            // @TODO: reuse previously created constant if values are the same
+            //return ctx->f->insert_constant(ctx->bb, lit->value);
+            return ConstantInt::get(
+                *c->ctx, APInt(32, lit->value, /* is signed */ true));
         }
 
-        bi->llvm_value = binary_value;
+        case AST::IDENTIFIER: {
+            auto id = (AST::Identifier *) expr;
 
-    } else if (auto un = value_il->as<IL::Unary_Expression>()) {
+            // @TODO: handle global variable
+            // @performance
+            auto var = find_variable(c->scope, id->name);
+            assert(var->address);
 
-        Value *unary_value;
-        auto operand = get_previously_converted_value(c, un->operand);
+            auto address = (llvm::Value *)var->address;
 
-        switch (un->op) {
-            case '-': unary_value = c->builder->CreateSub(ConstantInt::get(*c->ctx, APInt(32, 0, true)), operand); break;
-            case '+': unary_value = operand; break;
-            default: assert(false && "converting unknown unary instruction to LLVM IR");
+            if (is_lvalue) {
+                return address;
+            } else {
+                return c->builder->CreateLoad(llvm::Type::getInt32Ty(*c->ctx),
+                                              address);
+            }
+
         }
 
-        un->llvm_value = unary_value;
+        case AST::BINARY: {
+            auto bi = (AST::Binary *) expr;
 
-    } else if (auto call = value_il->as<IL::Function_Call>()) {
-        Function *callee_function = c->module->getFunction(call->name);
+            // @TODO:
+            // can we do the iterative version of this?
+            // because recursion might blow up the stack!
+            auto lhs = convert_expression(c, bi->lhs);
+            auto rhs = convert_expression(c, bi->rhs);
 
-        assert(callee_function);
-        assert(call->arguments.size() == callee_function->arg_size());
+            llvm::Value *binary_value;
+            switch (bi->op) {
+                case '+': binary_value = c->builder->CreateAdd(lhs, rhs); break;
+                case '-': binary_value = c->builder->CreateSub(lhs, rhs); break;
+                case '*': binary_value = c->builder->CreateMul(lhs, rhs); break;
+                //case '/': binary_value = c->builder->CreateSDiv(lhs, rhs); break;
+                case '<': binary_value = c->builder->CreateICmpSLT(lhs, rhs); break;
+                default: assert(false && "converting unknown binary instruction to LLVM IR");
+            }
 
-        Array<Value *> arguments;
-        for (auto arg_il : call->arguments) {
-            auto arg_value = get_previously_converted_value(c, arg_il);
-            arguments.push_back(arg_value);
+            return binary_value;
+
         }
 
-        call->llvm_value = c->builder->CreateCall(callee_function, arguments);
+        case AST::UNARY: {
+            auto un = (AST::Unary *) expr;
 
-    } else if (auto load = value_il->as<IL::Load>()) {
+            // @TODO: see the todo above
+            auto operand = convert_expression(c, un->operand);
 
-        auto base = get_previously_converted_value(c, load->base);
-        load->llvm_value = 
-            c->builder->CreateLoad(llvm::Type::getInt32Ty(*c->ctx), base);
+            llvm::Value *unary_value;
+            switch (un->op) {
+                case '-': unary_value = c->builder->CreateSub(ConstantInt::get(*c->ctx, APInt(32, 0, true)), operand); break;
+                case '+': unary_value = operand; break;
+                default: assert(false && "converting unknown unary instruction to LLVM IR");
+            }
 
-    } else if (auto store = value_il->as<IL::Store>()) {
+            return unary_value;
 
-        auto source = get_previously_converted_value(c, store->source);
-        auto base   = get_previously_converted_value(c, store->base);
-        store->llvm_value = c->builder->CreateStore(source, base);
-
-    } else if (auto br = value_il->as<IL::Branch>()) {
-        BasicBlock *true_target  = c->blocks[br->true_target->i];
-        BasicBlock *false_target = c->blocks[br->false_target->i];
-
-        auto cond = get_previously_converted_value(c, br->condition);
-
-        c->builder->CreateCondBr(cond, true_target, false_target);
-    } else if (auto jmp = value_il->as<IL::Jump>()) {
-        BasicBlock *target = c->blocks[jmp->target->i];
-
-        c->builder->CreateBr(target);
-    } else if (auto ret = value_il->as<IL::Return>()) {
-        
-        Value *return_value = nullptr;
-        if (ret->return_value) {
-            return_value = get_previously_converted_value(c, ret->return_value);
         }
 
-        c->builder->CreateRet(return_value);
-    } else {
-        assert(false && "converting unkonwn IL values to LLVM IR");
+        case AST::FUNCTION_CALL: {
+            auto call_ast = (AST::Function_Call *) expr;
+            auto callee_function = c->module->getFunction(call_ast->name);
+
+            assert(callee_function);
+            assert(call_ast->arguments.size() == callee_function->arg_size());
+
+            Array<llvm::Value *> arguments;
+            for (auto arg_expr : call_ast->arguments) {
+                auto arg_value = convert_expression(c, arg_expr);
+                arguments.push_back(arg_value);
+            }
+
+            return c->builder->CreateCall(callee_function, arguments);
+        }
+
+        default: {
+            assert(false && "Interal Compiler Error: converting unknown expreesion to intermediate language");
+            return nullptr;
+        }
+
     }
+}
+
+internal void convert_block(LLVM_Converter *c, AST::Block *block_ast) {
+
+    auto old_scope = c->scope;
+    c->scope = block_ast->scope;
+
+    // @curious
+    // How does this way of dynamic dispatching affects I$?
+    // How can we profile it?
+    for (auto stmt : block_ast->statements) {
+
+        switch (stmt->type) {
+
+            case AST::INT_LITERAL:
+            case AST::IDENTIFIER:
+            case AST::BINARY:
+            case AST::UNARY:
+            case AST::FUNCTION_CALL:
+                convert_expression(c, (AST::Expreesion *)stmt);
+                break;
+
+            case AST::VARIABLE: {
+                auto var = (AST::Variable *) stmt;
+
+                // @TODO: allocate depending on size of the type
+                assert(var->address == nullptr);
+                auto alloca = c->builder->CreateAlloca(
+                    llvm::Type::getInt32Ty(*c->ctx), nullptr);
+
+                if (var->initial_value) {
+                    auto initial_value = convert_expression(c, var->initial_value);
+                    c->builder->CreateStore(initial_value, alloca);
+                }
+
+                var->address = (void *)alloca;
+            } break;
+
+            case AST::ASSIGN: {
+                auto assign = (AST::Assign *) stmt;
+
+                auto source = convert_expression(c, assign->rhs);
+                auto dest   = convert_expression(c, assign->lhs, true);
+
+                c->builder->CreateStore(source, dest);
+            } break;
+
+            case AST::WHILE: {
+                auto wh = (AST::While *) stmt;
+
+                auto header = BasicBlock::Create(*c->ctx, "", c->function);
+                auto out    = BasicBlock::Create(*c->ctx, "", c->function);
+                auto body   = BasicBlock::Create(*c->ctx, "", c->function);
+
+                c->builder->CreateBr(header);
+
+                c->builder->SetInsertPoint(header);
+                auto cond = convert_expression(c, wh->condition);
+                c->builder->CreateCondBr(cond, body, out);
+
+                c->builder->SetInsertPoint(body);
+                convert_block(c, wh->body);
+                c->builder->CreateBr(header);
+
+                // @TODO: take care of the case if we have return in
+                // the loop
+
+                c->builder->SetInsertPoint(out);
+
+            } break;
+
+            case AST::RETURN: {
+                auto ret_ast = (AST::Return *) stmt;
+
+                llvm::Value *return_value = nullptr;
+                if (ret_ast->return_value) {
+                    return_value = convert_expression(c, ret_ast->return_value);
+                }
+
+                c->builder->CreateRet(return_value);
+
+                // @TODO: halt conversion of the statements that follows
+
+            } break;
+
+            case AST::BLOCK: {
+                auto block_ast = (AST::Block *) stmt;
+
+                convert_block(c, block_ast);
+
+                // @TODO: handle return in block
+
+            }
+
+            default: {
+                assert(false && "Interal Compiler Error: converting unknown statement to intermidiate language.");
+            }
+
+        }
+    }
+
+    c->scope = old_scope;
 
 }
 
-internal Function *convert_function(LLVM_Converter *c, IL::Function *func_il) {
-    auto arg_count = func_il->ast->func_type->arguments.size();
+internal Function *convert_function(LLVM_Converter *c, AST::Function *func_ast) {
+    auto arg_count = func_ast->func_type->arguments.size();
+
     //Array<llvm::Type *> arg_type(arg_count, llvm::Type::getInt32Ty(*c->ctx));
     Array<llvm::Type *> arg_type;
-    for (auto arg : func_il->ast->func_type->arguments) {
+    for (auto arg : func_ast->func_type->arguments) {
         arg_type.push_back(convert_type(c, arg));
     }
+
     FunctionType *ft = FunctionType::get(
-        convert_type(c, func_il->ast->func_type->return_type), arg_type, false);
+        convert_type(c, func_ast->func_type->return_type), arg_type, false);
 
-    Function *f = Function::Create(ft, Function::ExternalLinkage,
-                                   func_il->ast->name, c->module);
+    c->function = Function::Create(ft, Function::ExternalLinkage,
+                                   func_ast->name, c->module);
 
-    if (func_il->ast->body == nullptr) {
-        return f;
+    if (func_ast->body == nullptr) {
+        return c->function;
     }
 
-    c->blocks.clear();
-    for (u32 i = 0; i < func_il->blocks.size(); i++) {
-        auto bb = BasicBlock::Create(*c->ctx, "", f);
-        c->blocks.push_back(bb);
-    }
+    auto entry = BasicBlock::Create(*c->ctx, "", c->function);
+    c->builder->SetInsertPoint(entry);
 
-    for (u32 bb_index = 0;
-         bb_index < func_il->blocks.size();
-         bb_index++) {
+    convert_block(c, func_ast->body);
 
-        auto bb = c->blocks[bb_index];
-        auto bb_il = func_il->blocks[bb_index];
+    verifyFunction(*c->function);
 
-        c->builder->SetInsertPoint(bb);
-
-        for (auto instruction_il : bb_il->instructions) {
-            convert_value(c, f, instruction_il);
-        }
-    }
-
-    verifyFunction(*f);
-
-    return f;
+    return c->function;
 }
 
-internal Module *convert_module(IL::Module *module_il) {
+internal Module *convert_module(AST::Module *module_ast) {
 
     // create a new context and module
     LLVM_Converter converter;
     converter.ctx     = new LLVMContext;
     converter.module  = new Module("unamed module", *converter.ctx);
+    converter.scope   = module_ast->scope;
 
     // create IR builder for the module
     converter.builder = new IRBuilder<>(*converter.ctx);
 
+    // @FIXME: Deal with global variables!
+    // m->globals = std::move(module_ast->scope->variables);
+
     // convert functions
-    for (auto function_il : module_il->functions) {
-        convert_function(&converter, function_il);
+    for (auto function_ast : module_ast->functions) {
+        convert_function(&converter, function_ast);
     }
 
     // @FIXME: DONT DEPEND ON GLOBAL VARIABLE
@@ -249,7 +336,6 @@ internal Module *convert_module(IL::Module *module_il) {
         optimize_module(converter.module, options.optimization_level);
     }
 
-    printf("\n\n");
     converter.module->print(errs(), nullptr);
 
     return converter.module;
